@@ -23,6 +23,8 @@ from PIL import Image
 from dm_control.mujoco.wrapper import mjbindings
 from dm_control.rl import control
 
+from .mixins import SaveMixin
+
 DAVIS17_TRAINING_VIDEOS = [
     'bear', 'bmx-bumps', 'boat', 'boxing-fisheye', 'breakdance-flare', 'bus',
     'car-turn', 'cat-girl', 'classic-car', 'color-run', 'crossing',
@@ -73,11 +75,21 @@ def blend_to_background(alpha, image, background):
                 + (1. - alpha) * background.astype(np.float32)).astype(np.uint8)
 
 
-class DistractingBackgroundEnv(control.Environment):
+class DistractingBackgroundEnv(control.Environment, SaveMixin):
     """Environment wrapper for background visual distraction.
 
     **NOTE**: This wrapper should be applied BEFORE the pixel wrapper to make sure
     the background image changes are applied before rendering occurs.
+
+    :param env:
+    :param dataset_path:
+    :param dataset_videos:
+    :param video_alpha:
+    :param ground_plane_alpha:
+    :param num_videos:
+    :param dynamic: bool: Whether to use a video as background
+    :param seed:
+    :param shuffle_buffer_size:
     """
 
     def __init__(self,
@@ -89,7 +101,8 @@ class DistractingBackgroundEnv(control.Environment):
                  num_videos=None,
                  dynamic=False,
                  seed=None,
-                 shuffle_buffer_size=None):
+                 shuffle_buffer_size=None,
+                 fix_background=False):
 
         if not 0 <= video_alpha <= 1:
             raise ValueError('`video_alpha` must be in the range [0, 1]')
@@ -102,6 +115,8 @@ class DistractingBackgroundEnv(control.Environment):
         self._shuffle_buffer_size = shuffle_buffer_size
         self._background = None
         self._current_img_index = 0
+        self._fix_background = fix_background
+        self._seed = seed
 
         if not dataset_path or num_videos == 0:
             # Allow running the wrapper without backgrounds to still set the ground
@@ -135,7 +150,16 @@ class DistractingBackgroundEnv(control.Environment):
     def reset(self):
         """Reset the background state."""
         time_step = self._env.reset()
-        self._reset_background()
+        if self._background is None or not self._fix_background:
+            self._reset_background()
+
+        if self._dynamic and self._fix_background:
+            assert self._background is not None
+            # Reset video idx and direction
+            self._current_img_index = 0
+            self._step_direction = 1
+            self._apply()
+
         return time_step
 
     def _reset_background(self):
@@ -204,7 +228,7 @@ class DistractingBackgroundEnv(control.Environment):
     def step(self, action):
         time_step = self._env.step(action)
 
-        if time_step.first():
+        if time_step.first() and not self._fix_background:
             self._reset_background()
             return time_step
 
@@ -249,3 +273,25 @@ class DistractingBackgroundEnv(control.Environment):
             return getattr(self._env, attr)
         raise AttributeError("'{}' object has no attribute '{}'".format(
             type(self).__name__, attr))
+
+    @classmethod
+    def from_pkl(cls, env, filepath):
+        import cloudpickle
+        with open(filepath, 'rb') as f:
+            state = cloudpickle.load(f)
+
+        instance = cls(env)
+        for key, val in state.items():
+            setattr(instance, key, val)
+
+        # instance._background = Texture(sky_size, sky_address, texturized_images)
+        assert instance._background is not None
+        assert instance._fix_background
+
+        if instance._ground_plane_alpha is not None:
+            instance._env.physics.named.model.mat_rgba['grid',
+                                                       'a'] = instance._ground_plane_alpha
+        instance._env.physics.model.tex_height[SKY_TEXTURE_INDEX] = 800
+        instance._apply()
+
+        return instance

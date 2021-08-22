@@ -45,6 +45,7 @@ def load(domain_name,
          task_name,
          difficulty=None,
          dynamic=False,
+         distraction_types=('background', 'camera', 'color'),
          background_dataset_path=None,
          background_dataset_videos="train",
          background_kwargs=None,
@@ -56,7 +57,11 @@ def load(domain_name,
          render_kwargs=None,
          from_pixels=True,
          pixels_only=True,
-         pixels_observation_key="pixels"):
+         pixels_observation_key="pixels",
+         saved_background=None,
+         saved_color=None,
+         saved_camera=None,
+         fix_distraction=False):
     """Returns an environment from a domain name, task name and optional settings.
 
     ```python
@@ -106,19 +111,24 @@ def load(domain_name,
         render_kwargs["camera_id"] = 2 if domain_name == "quadruped" else 0
 
     env = suite.load(domain_name, task_name, task_kwargs=task_kwargs, environment_kwargs=environment_kwargs,
-                     visualize_reward=visualize_reward)
+                    visualize_reward=visualize_reward)
 
-    # Apply background distractions.
-    if difficulty or background_kwargs:
+    pJoin = os.path.join
+    if saved_background:
+        print('loading from saved_background')
+        env = background.DistractingBackgroundEnv.from_pkl(env, saved_background)
+    elif 'background' in distraction_types and (difficulty or background_kwargs):
+        # Apply background distractions.
+
         background_dataset_path = (background_dataset_path or BG_DATA_PATH)
-        final_background_kwargs = dict()
+        final_background_kwargs = dict(fix_background=fix_distraction)
         if difficulty:
             # Get kwargs for the given difficulty.
             num_videos = suite_utils.DIFFICULTY_NUM_VIDEOS[difficulty]
             final_background_kwargs.update(
                 suite_utils.get_background_kwargs(domain_name, num_videos, dynamic,
-                                                  background_dataset_path,
-                                                  background_dataset_videos))
+                                                background_dataset_path,
+                                                background_dataset_videos))
         else:
             # Set the dataset path and the videos.
             final_background_kwargs.update(
@@ -131,8 +141,13 @@ def load(domain_name,
         env = background.DistractingBackgroundEnv(env, **final_background_kwargs)
 
     # Apply camera distractions.
-    if difficulty or camera_kwargs:
-        final_camera_kwargs = dict(camera_id=render_kwargs["camera_id"])
+    if saved_camera:
+        env = camera.DistractingCameraEnv.from_pkl(env, saved_camera)
+    elif 'camera' in distraction_types and (difficulty or camera_kwargs):
+        final_camera_kwargs = dict(
+            camera_id=render_kwargs["camera_id"],
+            fix_camera=fix_distraction
+        )
         if difficulty:
             # Get kwargs for the given difficulty.
             scale = suite_utils.DIFFICULTY_SCALE[difficulty]
@@ -143,8 +158,10 @@ def load(domain_name,
         env = camera.DistractingCameraEnv(env, **final_camera_kwargs)
 
     # Apply color distractions.
-    if difficulty or color_kwargs:
-        final_color_kwargs = dict()
+    if saved_color:
+        env = color.DistractingColorEnv.from_pkl(env, saved_color)
+    if 'color' in distraction_types and (difficulty or color_kwargs):
+        final_color_kwargs = dict(fix_color=fix_distraction)
         if difficulty:
             # Get kwargs for the given difficulty.
             scale = suite_utils.DIFFICULTY_SCALE[difficulty]

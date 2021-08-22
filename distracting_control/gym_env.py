@@ -46,6 +46,7 @@ class DistractingEnv(gym.Env):
                  task_name,
                  difficulty,
                  dynamic=False,
+                 distraction_types=('background', 'camera', 'color'),
                  background_data_path=None,
                  background_kwargs=None,
                  background_dataset_videos="train",
@@ -69,6 +70,12 @@ class DistractingEnv(gym.Env):
                  no_gravity=False,
                  non_newtonian=False,
                  skip_start=None,  # useful in Manipulator for letting things settle
+
+                 saved_augmentation=None,
+                 saved_background=None,
+                 saved_color=None,
+                 saved_camera=None,
+                 fix_distraction=False
                  ):
         """
 
@@ -95,6 +102,11 @@ class DistractingEnv(gym.Env):
         :param no_gravity:
         :param non_newtonian:
         :param skip_start:
+        :param saved_augmentation:
+        :param saved_background:
+        :param saved_color:
+        :param saved_camera:
+        :param fix_distraction:
         """
 
         self.render_kwargs = dict(
@@ -103,12 +115,22 @@ class DistractingEnv(gym.Env):
             camera_id=camera_id,
         )
 
+        from os.path import join as pJoin
+        if saved_augmentation is not None:
+            assert saved_background is None, 'saved_background will be overwritten when saved_augmentation is set'
+            assert saved_color is None, 'saved_color will be overwritten when saved_augmentation is set'
+            assert saved_camera is None, 'saved_camera will be overwritten when saved_augmentation is set'
+            saved_background = pJoin(saved_augmentation, 'DistractingBackgroundEnv.pkl')
+            saved_color = pJoin(saved_augmentation, 'DistractingColorEnv.pkl')
+            saved_camera = pJoin(saved_augmentation, 'DistractingCameraEnv.pkl')
+
         self.env = suite.load(domain_name,
                               task_name,
                               difficulty,
                               dynamic=dynamic,
 
                               # distractor kwargs
+                              distraction_types=distraction_types,
                               background_dataset_path=background_data_path,
                               background_dataset_videos=background_dataset_videos,
                               background_kwargs=background_kwargs,
@@ -123,6 +145,11 @@ class DistractingEnv(gym.Env):
                               render_kwargs=self.render_kwargs,
                               from_pixels=from_pixels,
                               pixels_observation_key=pixels_observation_key,
+
+                              fix_distraction=fix_distraction,
+                              saved_background=saved_background,
+                              saved_color=saved_color,
+                              saved_camera=saved_camera,
                               )
         self.pixels_observation_key = pixels_observation_key
         self.metadata = {'render.modes': ['human', 'rgb_array'],
@@ -247,3 +274,21 @@ class DistractingEnv(gym.Env):
             self.viewer.close()
             self.viewer = None
         return self.env.close()
+
+    def save_state(self, directory):
+        """Go through the child classes by recursively visting ._env property,
+        and call save_state() method if it's either of background ,color, camera env.
+        """
+        import os
+        from .background import DistractingBackgroundEnv
+        from .camera import DistractingCameraEnv
+        from .color import DistractingColorEnv
+        target = self.env
+        assert hasattr(target, '_env')
+        os.makedirs(directory, exist_ok=True)
+
+        pJoin = os.path.join
+        while hasattr(target, '_env'):
+            if isinstance(target, (DistractingBackgroundEnv, DistractingColorEnv, DistractingCameraEnv)):
+                target.save_state(pJoin(directory, type(target).__name__ + '.pkl'))
+            target = target._env  # Go deeper
