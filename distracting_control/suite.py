@@ -44,8 +44,8 @@ def is_available():
 def load(domain_name,
          task_name,
          difficulty=None,
+         distraction_types=None,
          dynamic=False,
-         distraction_types=('background', 'camera', 'color'),
          background_dataset_path=None,
          background_dataset_videos="train",
          background_kwargs=None,
@@ -104,6 +104,7 @@ def load(domain_name,
     if difficulty not in [None, "easy", "medium", "hard"]:
         raise ValueError("Difficulty should be one of: 'easy', 'medium', 'hard'.")
 
+    distraction_types = distraction_types or ()
     saved_distraction = saved_distraction or {}
     render_kwargs = render_kwargs or {}
     if "camera_id" not in render_kwargs:

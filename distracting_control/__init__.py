@@ -23,11 +23,16 @@ for difficulty in [None, 'easy', 'medium', 'hard']:
     for domain_name, task_name in ALL_TASKS:
         suffix = difficulty + '-v1' if difficulty else 'v1'
         ID = f'{domain_name.capitalize()}-{task_name}-{suffix}'
+        if difficulty:
+            distraction_types=('background', 'camera', 'color')
+        else:
+            distraction_types=None
         register(id=ID,
                  entry_point='distracting_control:make_env',
                  kwargs=dict(domain_name=domain_name,
                              task_name=task_name,
                              difficulty=difficulty,
+                             distraction_types=distraction_types,
                              channels_first=True,
                              width=84,
                              height=84,
