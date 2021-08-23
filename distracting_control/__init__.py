@@ -2,11 +2,13 @@ from dm_control.suite import ALL_TASKS
 from gym.envs import register
 
 
-def make_env(flatten_obs=True, from_pixels=False, frame_skip=1, max_episode_steps=1000, **kwargs):
+def make_env(flatten_obs=True, from_pixels=False, frame_skip=1, max_episode_steps=1000, distracting_seed=0, **kwargs):
     max_episode_steps /= frame_skip
 
     from distracting_control.gym_env import DistractingEnv
-    env = DistractingEnv(from_pixels=from_pixels, frame_skip=frame_skip, **kwargs)
+    seed_kwargs = {key: {'seed': distracting_seed} for key in ('background_kwargs', 'camera_kwargs', 'color_kwargs')}
+    env = DistractingEnv(
+        from_pixels=from_pixels, frame_skip=frame_skip, **seed_kwargs, **kwargs)
     if from_pixels:
         from .wrappers import ObservationByKey
         env = ObservationByKey(env, "pixels")
