@@ -275,11 +275,7 @@ class DistractingBackgroundEnv(control.Environment, SaveMixin):
             type(self).__name__, attr))
 
     @classmethod
-    def from_pkl(cls, env, filepath):
-        import cloudpickle
-        with open(filepath, 'rb') as f:
-            state = cloudpickle.load(f)
-
+    def from_dict(cls, env, state):
         instance = cls(env)
         for key, val in state.items():
             setattr(instance, key, val)

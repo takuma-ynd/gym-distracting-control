@@ -58,9 +58,7 @@ def load(domain_name,
          from_pixels=True,
          pixels_only=True,
          pixels_observation_key="pixels",
-         saved_background=None,
-         saved_color=None,
-         saved_camera=None,
+         saved_distraction=None,
          fix_distraction=False):
     """Returns an environment from a domain name, task name and optional settings.
 
@@ -106,6 +104,7 @@ def load(domain_name,
     if difficulty not in [None, "easy", "medium", "hard"]:
         raise ValueError("Difficulty should be one of: 'easy', 'medium', 'hard'.")
 
+    saved_distraction = saved_distraction or {}
     render_kwargs = render_kwargs or {}
     if "camera_id" not in render_kwargs:
         render_kwargs["camera_id"] = 2 if domain_name == "quadruped" else 0
@@ -113,10 +112,10 @@ def load(domain_name,
     env = suite.load(domain_name, task_name, task_kwargs=task_kwargs, environment_kwargs=environment_kwargs,
                     visualize_reward=visualize_reward)
 
-    pJoin = os.path.join
+    saved_background = saved_distraction.get('DistractingBackgroundEnv', None)
     if saved_background:
         print('loading from saved_background')
-        env = background.DistractingBackgroundEnv.from_pkl(env, saved_background)
+        env = background.DistractingBackgroundEnv.from_dict(env, saved_background)
     elif 'background' in distraction_types and (difficulty or background_kwargs):
         # Apply background distractions.
 
@@ -141,8 +140,10 @@ def load(domain_name,
         env = background.DistractingBackgroundEnv(env, **final_background_kwargs)
 
     # Apply camera distractions.
+    saved_camera = saved_distraction.get('DistractingCameraEnv', None)
     if saved_camera:
-        env = camera.DistractingCameraEnv.from_pkl(env, saved_camera)
+        print('loading saved camera distraction')
+        env = camera.DistractingCameraEnv.from_dict(env, saved_camera)
     elif 'camera' in distraction_types and (difficulty or camera_kwargs):
         final_camera_kwargs = dict(
             camera_id=render_kwargs["camera_id"],
@@ -158,9 +159,11 @@ def load(domain_name,
         env = camera.DistractingCameraEnv(env, **final_camera_kwargs)
 
     # Apply color distractions.
+    saved_color = saved_distraction.get('DistractingColorEnv', None)
     if saved_color:
-        env = color.DistractingColorEnv.from_pkl(env, saved_color)
-    if 'color' in distraction_types and (difficulty or color_kwargs):
+        print('loading saved color distraction')
+        env = color.DistractingColorEnv.from_dict(env, saved_color)
+    elif 'color' in distraction_types and (difficulty or color_kwargs):
         final_color_kwargs = dict(fix_color=fix_distraction)
         if difficulty:
             # Get kwargs for the given difficulty.

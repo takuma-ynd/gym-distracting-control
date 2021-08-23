@@ -71,7 +71,7 @@ class DistractingEnv(gym.Env):
                  non_newtonian=False,
                  skip_start=None,  # useful in Manipulator for letting things settle
 
-                 saved_augmentation=None,
+                 saved_distraction=None,
                  saved_background=None,
                  saved_color=None,
                  saved_camera=None,
@@ -102,7 +102,7 @@ class DistractingEnv(gym.Env):
         :param no_gravity:
         :param non_newtonian:
         :param skip_start:
-        :param saved_augmentation:
+        :param saved_distraction:
         :param saved_background:
         :param saved_color:
         :param saved_camera:
@@ -115,14 +115,6 @@ class DistractingEnv(gym.Env):
             camera_id=camera_id,
         )
 
-        from os.path import join as pJoin
-        if saved_augmentation is not None:
-            assert saved_background is None, 'saved_background will be overwritten when saved_augmentation is set'
-            assert saved_color is None, 'saved_color will be overwritten when saved_augmentation is set'
-            assert saved_camera is None, 'saved_camera will be overwritten when saved_augmentation is set'
-            saved_background = pJoin(saved_augmentation, 'DistractingBackgroundEnv.pkl')
-            saved_color = pJoin(saved_augmentation, 'DistractingColorEnv.pkl')
-            saved_camera = pJoin(saved_augmentation, 'DistractingCameraEnv.pkl')
 
         self.env = suite.load(domain_name,
                               task_name,
@@ -147,9 +139,7 @@ class DistractingEnv(gym.Env):
                               pixels_observation_key=pixels_observation_key,
 
                               fix_distraction=fix_distraction,
-                              saved_background=saved_background,
-                              saved_color=saved_color,
-                              saved_camera=saved_camera,
+                              saved_distraction=saved_distraction,
                               )
         self.pixels_observation_key = pixels_observation_key
         self.metadata = {'render.modes': ['human', 'rgb_array'],
@@ -275,7 +265,7 @@ class DistractingEnv(gym.Env):
             self.viewer = None
         return self.env.close()
 
-    def save_state(self, directory):
+    def get_distracting_state(self):
         """Go through the child classes by recursively visting ._env property,
         and call save_state() method if it's either of background ,color, camera env.
         """
@@ -285,10 +275,10 @@ class DistractingEnv(gym.Env):
         from .color import DistractingColorEnv
         target = self.env
         assert hasattr(target, '_env')
-        os.makedirs(directory, exist_ok=True)
 
-        pJoin = os.path.join
+        state = {}
         while hasattr(target, '_env'):
             if isinstance(target, (DistractingBackgroundEnv, DistractingColorEnv, DistractingCameraEnv)):
-                target.save_state(pJoin(directory, type(target).__name__ + '.pkl'))
+                state[type(target).__name__] = target.get_distracting_state()
             target = target._env  # Go deeper
+        return state

@@ -23,12 +23,18 @@ if __name__ == '__main__':
             # - pickled_state/DistractingColorEnv.pkl
             # - pickled_state/DistractingCameraEnv.pkl
             mock_env.reset()
-            mock_env.save_state('pickled_state')
 
+            state = mock_env.get_distracting_state()
+            import torch
+            with open('pickled_state.pkl', 'wb') as f:
+                torch.save(state, f)
+
+            with open('pickled_state.pkl', 'rb') as f:
+                state = torch.load(f)
             # Load distractions from the pickled state
             env = gym.make(f'distracting_control:{domain.capitalize()}-{task}-{difficulty}-v1',
                            from_pixels=True, channels_first=False, dynamic=False, fix_distraction=True,
-                           saved_augmentation='pickled_state')
+                           saved_distraction=state)
 
             n_trials = 5
             episode_length = 10
