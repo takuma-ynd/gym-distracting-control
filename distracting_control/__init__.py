@@ -27,7 +27,7 @@ for difficulty in ['easy', 'medium', 'hard']:
                  kwargs=dict(domain_name=domain_name,
                              task_name=task_name,
                              difficulty=difficulty,
-                             distraction_types=distraction_types,
+                             distraction_types=('background', 'camera', 'color'),
                              channels_first=True,
                              width=84,
                              height=84,
