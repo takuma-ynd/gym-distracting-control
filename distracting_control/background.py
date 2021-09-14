@@ -187,7 +187,7 @@ class DistractingBackgroundEnv(control.Environment, GetStateMixin):
             else:
                 # Randomly pick a video and load all images.
                 video_path = self._random_state.choice(self._video_paths)
-                file_names = tf.io.gfile.listdir(video_path)
+                file_names = sorted(tf.io.gfile.listdir(video_path))
                 if not self._dynamic:
                     # Randomly pick a single static frame.
                     file_names = [self._random_state.choice(file_names)]
