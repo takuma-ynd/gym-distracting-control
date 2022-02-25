@@ -126,7 +126,7 @@ def load(domain_name,
     if saved_background:
         print('loading from saved_background')
         env = background.DistractingBackgroundEnv.from_dict(env, saved_background)
-    elif 'background' in distraction_types and (difficulty or background_kwargs):
+    elif 'background' in distraction_types and (difficulty or intensity or background_kwargs):
         # Apply background distractions.
 
         background_dataset_path = (background_dataset_path or BG_DATA_PATH)
@@ -141,9 +141,9 @@ def load(domain_name,
         else:
             # Set the dataset path and the videos.
             final_background_kwargs.update(
-                dict(
-                    dataset_path=background_dataset_path,
-                    dataset_videos=background_dataset_videos))
+                suite_utils.get_background_intensity_kwargs(domain_name, intensity, dynamic,
+                                                            background_dataset_path,
+                                                            background_dataset_videos))
         if background_kwargs:
             # Overwrite kwargs with those passed here.
             final_background_kwargs.update(background_kwargs)

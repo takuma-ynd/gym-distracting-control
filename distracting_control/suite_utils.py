@@ -78,6 +78,34 @@ def get_background_kwargs(domain_name,
     )
 
 
+def get_background_intensity_kwargs(domain_name,
+                                    intensity,
+                                    dynamic,
+                                    dataset_path,
+                                    dataset_videos=None,
+                                    shuffle=False):
+    # assert domain_name in ['reacher', 'cartpole', 'finger', 'cheetah', 'ball_in_cup', 'walker']
+    if domain_name == 'reacher':
+        min_ground_plane_alpha = 0.0
+    elif domain_name in ['walker', 'cheetah']:
+        min_ground_plane_alpha = 1.0
+    else:
+        min_ground_plane_alpha = 0.3
+
+    # intensity decides how to blend background alpha and ground-plane alpha.
+    assert 0 <= intensity <= 1
+    ground_plane_alpha = 1.0 * (1.0 - intensity) + min_ground_plane_alpha * intensity
+
+    return dict(
+        video_alpha=intensity,
+        ground_plane_alpha=ground_plane_alpha,
+        dynamic=dynamic,
+        dataset_path=dataset_path,
+        dataset_videos=dataset_videos,
+        shuffle_buffer_size=100 if shuffle else None,
+    )
+
+
 def sample(random_state, low=0.0, high=1.0, size=None, distribution='uniform'):
     if distribution == 'uniform':
         return random_state.uniform(low, high, size)
