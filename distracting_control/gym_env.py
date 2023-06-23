@@ -15,8 +15,12 @@ def convert_dm_control_to_gym_space(dm_control_space, **kwargs):
         assert space.shape == dm_control_space.shape
         return space
     elif isinstance(dm_control_space, specs.Array) and not isinstance(dm_control_space, specs.BoundedArray):
-        space = spaces.Box(low=-float('inf'),
-                           high=float('inf'),
+        if dm_control_space.dtype == np.uint8:
+            low, high = np.iinfo(dm_control_space.dtype).min, np.iinfo(dm_control_space.dtype).max
+        else:
+            low, high = -float('inf'), float('inf')
+        space = spaces.Box(low=low,
+                           high=high,
                            shape=dm_control_space.shape,
                            dtype=dm_control_space.dtype)
         return space
