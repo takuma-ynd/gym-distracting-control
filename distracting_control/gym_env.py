@@ -243,7 +243,8 @@ class DistractingEnv(gym.Env):
         if self.pixels_observation_key in obs and self.channels_first:
             obs[self.pixels_observation_key] = obs[self.pixels_observation_key].transpose([2, 0, 1])
 
-        return obs
+        info = {}
+        return obs, info
 
     def render(self, mode='human', height=None, width=None, camera_id=0, **kwargs):
         img = self.env.physics.render(
